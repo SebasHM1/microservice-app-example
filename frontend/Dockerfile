@@ -1,39 +1,31 @@
-# Usar una imagen base de Python
 FROM python:3.11-alpine
 
-# Instalar Node.js y dependencias necesarias
+# Instalar dependencias necesarias
 RUN apk add --no-cache \
     nodejs \
     npm \
-    make \
-    g++ \
-    libc6-compat \
     nginx
 
-# Crear directorio de trabajo
 WORKDIR /app
 
-# Copiar archivos de dependencias de Node.js
+# Copiar dependencias (ya sin node-sass)
 COPY package*.json ./
 
-# Reemplazar node-sass con sass (para evitar problemas con node-gyp)
-RUN npm uninstall node-sass && npm install sass
-
-# Instalar dependencias del frontend
+# Instalar dependencias
 RUN npm install --legacy-peer-deps
 
-# Copiar el resto del código fuente
+# Copiar código fuente
 COPY . .
 
-# Construir la aplicación Vue
+# Construir el frontend
 RUN npm run build
 
-# Configurar Nginx para servir la aplicación
-RUN mkdir -p /run/nginx
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copiar al folder que servirá nginx
+RUN mkdir -p /var/www/html && cp -r dist/* /var/www/html/
 
-# Exponer el puerto de Nginx
+# Configurar nginx
+COPY nginx.conf /etc/nginx/http.d/default.conf
+
 EXPOSE 80
 
-# Iniciar Nginx al ejecutar el contenedor
 CMD ["nginx", "-g", "daemon off;"]
