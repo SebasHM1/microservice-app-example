@@ -1,31 +1,19 @@
-FROM python:3.11-alpine
-
-# Instalar dependencias necesarias
-RUN apk add --no-cache \
-    nodejs \
-    npm \
-    nginx
+FROM node:8.17.0
 
 WORKDIR /app
 
-# Copiar dependencias (ya sin node-sass)
 COPY package*.json ./
 
-# Instalar dependencias
-RUN npm install --legacy-peer-deps
+RUN npm install
 
-# Copiar código fuente
 COPY . .
 
-# Construir el frontend
 RUN npm run build
 
-# Copiar al folder que servirá nginx
-RUN mkdir -p /var/www/html && cp -r dist/* /var/www/html/
+EXPOSE 8080
 
-# Configurar nginx
-COPY nginx.conf /etc/nginx/http.d/default.conf
+ENV PORT=8080
+ENV AUTH_API_ADDRESS=http://auth-api:8000
+ENV TODOS_API_ADDRESS=http://todos-api:8082
 
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["npm", "start"]
