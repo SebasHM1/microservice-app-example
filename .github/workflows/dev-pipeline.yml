@@ -1,0 +1,32 @@
+name: Build All Microservices
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build auth-api (Go)
+        run: docker build -t auth-api ./auth-api
+
+      - name: Build users-api (Java)
+        run: docker build -t users-api ./users-api
+
+      - name: Build todos-api (NodeJS)
+        run: docker build -t todos-api ./todos-api
+
+      - name: Build log-message-processor (Python)
+        run: docker build -t log-message-processor ./log-message-processor
+
+      - name: Build frontend (Vue)
+        run: docker build -t frontend ./frontend
