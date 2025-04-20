@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
+  auth-api:
+    build:
+      context: ./auth-api
+    ports:
+      - "8000:8000"
+    environment:
+      - AUTH_API_PORT=8000
+      - USERS_API_ADDRESS=http://users-api:8083
+      - JWT_SECRET=myfancysecret
+    networks:
+      - app-network
+
+  users-api:
+    build: ./users-api
+    container_name: users-api
+    ports:
+      - "8083:8083"
+    networks:
+      - app-network
+
+  todos-api:
+    build: ./todos-api
+    container_name: todos-api
+    ports: 
+      - "8082:8082"
+    environment:
+      - REDIS_HOST=redis
+      - JWT_SECRET=myfancysecret
+    depends_on:
+      - redis
+    networks:
+      - app-network  
+    
+
+  log-message-processor:
+    build: ./log-message-processor
+    container_name: log-processor
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_CHANNEL=log_channel
+    depends_on:
+      - redis
+    networks:
+      - app-network  
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth-api
+      - users-api
+      - todos-api
+    networks:
+      - app-network 
+
+networks:
+  app-network:
+    driver: bridge
