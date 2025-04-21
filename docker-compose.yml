@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
 
   auth-api:
@@ -59,7 +57,3 @@ services:
       - todos-api
     networks:
       - app-network 
-
-networks:
-  app-network:
-    driver: bridge
