@@ -4,14 +4,30 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"os"
 	"time"
+	"fmt"
+	"database/sql"
 
 	jwt "github.com/dgrijalva/jwt-go"
+	_ "github.com/lib/pq"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	gommonlog "github.com/labstack/gommon/log"
 )
+
+type Config struct {
+    ZIPKIN_URL        string
+    JWT_SECRET        string
+    USERS_API_ADDRESS string
+    AUTH_API_PORT     string
+    AUTH_API_ADDRESS  string
+    TODOS_API_ADDRESS string
+    REDIST_PORT       string
+    REDIST_HOST       string
+    REDIS_CHANNEL     string
+}
+
+var AppConfig Config
 
 var (
 	// ErrHttpGenericMessage that is returned in general case, details should be logged in such case
@@ -23,11 +39,59 @@ var (
 	jwtSecret = "myfancysecret"
 )
 
-func main() {
-	hostport := ":" + os.Getenv("AUTH_API_PORT")
-	userAPIAddress := os.Getenv("USERS_API_ADDRESS")
+func loadConfigFromDB(db *sql.DB) error {
+    query := "SELECT name, value FROM env"
+    rows, err := db.Query(query)
+    if err != nil {
+        return fmt.Errorf("error querying environment variables: %v", err)
+    }
+    defer rows.Close()
 
-	envJwtSecret := os.Getenv("JWT_SECRET")
+    configMap := make(map[string]string)
+    for rows.Next() {
+        var key, value string
+        if err := rows.Scan(&key, &value); err != nil {
+            return fmt.Errorf("error scanning row: %v", err)
+        }
+        configMap[key] = value
+    }
+
+    AppConfig = Config{
+        ZIPKIN_URL:        configMap["ZIPKIN_URL"],
+        JWT_SECRET:        configMap["JWT_SECRET"],
+        USERS_API_ADDRESS: configMap["USERS_API_ADDRESS"],
+        AUTH_API_PORT:     configMap["AUTH_API_PORT"],
+        AUTH_API_ADDRESS:  configMap["AUTH_API_ADDRESS"],
+        TODOS_API_ADDRESS: configMap["TODOS_API_ADDRESS"],
+        REDIST_PORT:       configMap["REDIST_PORT"],
+        REDIST_HOST:       configMap["REDIST_HOST"],
+        REDIS_CHANNEL:     configMap["REDIS_CHANNEL"],
+    }
+
+    return nil
+}
+
+func main() {
+	connStr := "postgresql://neondb_owner:npg_qs9gLMJPw4SI@ep-royal-snow-a8u3lgjs-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
+	db, err := sql.Open("postgres", connStr)
+
+	if err != nil {
+        log.Fatalf("Error connecting to the database: %v", err)
+    }
+    defer db.Close()
+
+	if err := loadConfigFromDB(db); err != nil {
+        log.Fatalf("Error loading configuration: %v", err)
+    }
+
+	log.Println("Successfully connected to the database")
+	
+	
+
+	hostport := ":" + AppConfig.AUTH_API_PORT
+	userAPIAddress := AppConfig.USERS_API_ADDRESS
+
+	envJwtSecret := AppConfig.JWT_SECRET
 	if len(envJwtSecret) != 0 {
 		jwtSecret = envJwtSecret
 	}
@@ -45,7 +109,7 @@ func main() {
 	e := echo.New()
 	e.Logger.SetLevel(gommonlog.INFO)
 
-	if zipkinURL := os.Getenv("ZIPKIN_URL"); len(zipkinURL) != 0 {
+	if zipkinURL := AppConfig.ZIPKIN_URL; len(zipkinURL) != 0 {
 		e.Logger.Infof("init tracing to Zipkit at %s", zipkinURL)
 
 		if tracedMiddleware, tracedClient, err := initTracing(zipkinURL); err == nil {

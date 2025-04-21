@@ -6,11 +6,12 @@
   "private": true,
   "scripts": {
     "dev": "node build/dev-server.js",
-    "start": "node build/dev-server.js",
+    "start": "node start.js",
     "build": "node build/build.js",
     "lint": "eslint --ext .js,.vue src"
   },
   "dependencies": {
+    "pg": "^7.4.3",
     "bootstrap-vue": "^0.22.1",
     "jwt-decode": "^2.2.0",
     "vue": "^2.3.3",

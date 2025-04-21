@@ -1,6 +1,13 @@
 version: '3.8'
 
 services:
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+
   redis:
     image: redis:7
     container_name: redis

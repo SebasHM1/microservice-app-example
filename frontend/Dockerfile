@@ -8,12 +8,11 @@ RUN npm install
 
 COPY . .
 
+# Ejecutar el script para cargar las variables de entorno antes de construir
+RUN node config/load-env.js
+
 RUN npm run build
 
 EXPOSE 8080
-
-ENV PORT=8080
-ENV AUTH_API_ADDRESS=http://auth-api:8000
-ENV TODOS_API_ADDRESS=http://todos-api:8082
 
 CMD ["npm", "start"]
