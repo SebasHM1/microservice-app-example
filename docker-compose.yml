@@ -26,7 +26,7 @@ services:
     ports:
       - 8082:8082
     environment:
-      - REDIS_HOST="true-ladybird-25795.upstash.io"
+      - REDIS_HOST=true-ladybird-25795.upstash.io
       - REDIS_PASSWORD="AWTDAAIjcDFkYTNjZmFhMThmNTc0NWIzOTJhZWJkNzIwZDhhNzlhZHAxMA
       - REDIS_PORT=6379
       - REDIS_CHANNEL=log_channel
