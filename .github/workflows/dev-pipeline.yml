@@ -59,19 +59,18 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
-
+      RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+    
     steps:
       - uses: actions/checkout@v3
-
+  
       - name: Install Railway CLI
-        run: npm install -g @railway/cli       # Node ≥16 :contentReference[oaicite:5]{index=5}
-
-      - name: Link and Redeploy services
+        run: npm install -g @railway/cli
+  
+      - name: Redeploy Services
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
         run: |
           for S in auth-api users-api todos-api log-message-processor frontend; do
-            # Vincula el directorio con el servicio
-            railway link --service $S          # no requiere --yes :contentReference[oaicite:6]{index=6}
-            # Redeploy de la última imagen :latest
-            railway redeploy --service $S --yes # usa -y para omitir confirmación :contentReference[oaicite:7]{index=7}
+            RAILWAY_TOKEN=$RAILWAY_TOKEN railway redeploy --service $S --yes
           done
