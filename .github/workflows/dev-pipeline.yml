@@ -58,12 +58,19 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [auth-api, users-api, todos-api, log-message-processor, frontend]
+
     steps:
-      - name: Deploy ${{ matrix.service }}
-        uses: bervProject/railway-deploy@main
-        with:
-          railway_token: ${{ secrets.RAILWAY_API_TOKEN }}
-          service: ${{ matrix.service }}
+      - uses: actions/checkout@v3
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli      # Node ≥16 
+
+      - name: Railway login
+        run: railway login --token ${{ secrets.RAILWAY_API_TOKEN }}  # CI-friendly 
+
+      - name: Redeploy all services
+        run: |
+          for S in auth-api users-api todos-api log-message-processor frontend; do
+            railway service --yes --service $S      # linkea si hace falta 
+            railway redeploy --yes                  # redeploy sin confirmación 
+          done
