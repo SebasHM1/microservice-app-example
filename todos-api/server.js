@@ -45,7 +45,7 @@ async function loadEnvVariablesFromDB() {
     const REDIS_CHANNEL = process.env.REDIS_CHANNEL;
     const REDIS_HOST = process.env.REDIS_HOST;
     const REDIS_PORT = process.env.REDIS_PORT;
-    const TODO_API_PORT = process.env.TODO_API_PORT;
+    const TODO_API_PORT = process.env.TODOS_API_PORT;
     const JWT_SECRET = process.env.JWT_SECRET;
 
     // Configuración de Redis
