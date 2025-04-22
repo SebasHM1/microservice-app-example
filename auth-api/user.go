@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/sony/gobreaker"
 )
 
 var allowedUserHashes = map[string]interface{}{
@@ -33,19 +36,49 @@ type UserService struct {
 	AllowedUserHashes map[string]interface{}
 }
 
+// Crear un Circuit Breaker para el servicio de usuarios
+var userServiceBreaker *gobreaker.CircuitBreaker
+
+func init() {
+	userServiceBreaker = gobreaker.NewCircuitBreaker(gobreaker.Settings{
+		Name:        "UserServiceCircuitBreaker",
+		MaxRequests: 5,                // Máximo de solicitudes permitidas en estado Half-Open
+		Interval:    60 * time.Second, // Tiempo para restablecer el contador de fallos
+		Timeout:     10 * time.Second, // Tiempo de espera antes de pasar a Half-Open
+		ReadyToTrip: func(counts gobreaker.Counts) bool {
+			// Cambiar a estado Open si más del 50% de las solicitudes fallan
+			return counts.ConsecutiveFailures > 3
+		},
+	})
+}
+
 func (h *UserService) Login(ctx context.Context, username, password string) (User, error) {
-	user, err := h.getUser(ctx, username)
+	var user User
+
+	// Usar el Circuit Breaker para la llamada al servicio de usuarios
+	result, err := userServiceBreaker.Execute(func() (interface{}, error) {
+		user, err := h.getUser(ctx, username)
+		if err != nil {
+			return nil, err
+		}
+
+		userKey := fmt.Sprintf("%s_%s", username, password)
+
+		if _, ok := h.AllowedUserHashes[userKey]; !ok {
+			return nil, ErrWrongCredentials
+		}
+
+		return user, nil
+	})
+
 	if err != nil {
+		// Si el Circuit Breaker está abierto o la llamada falla, manejar el error
+		log.Printf("Circuit breaker triggered for user service: %v", err)
 		return user, err
 	}
 
-	userKey := fmt.Sprintf("%s_%s", username, password)
-
-	if _, ok := h.AllowedUserHashes[userKey]; !ok {
-		return user, ErrWrongCredentials // this is BAD, business logic layer must not return HTTP-specific errors
-	}
-
-	return user, nil
+	// Retornar el resultado si la llamada fue exitosa
+	return result.(User), nil
 }
 
 func (h *UserService) getUser(ctx context.Context, username string) (User, error) {

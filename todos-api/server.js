@@ -8,32 +8,49 @@ const {Tracer, BatchRecorder, jsonEncoder: { JSON_V2 }} = require('zipkin');
 const CLSContext = require('zipkin-context-cls');
 const {HttpLogger} = require('zipkin-transport-http');
 const zipkinMiddleware = require('zipkin-instrumentation-express').expressMiddleware;
+const retry = require('async-retry'); // Importar async-retry
 
 // Función para cargar las variables de entorno desde la base de datos
 async function loadEnvVariablesFromDB() {
-  const client = new Client({
-    connectionString: 'postgresql://neondb_owner:npg_qs9gLMJPw4SI@ep-royal-snow-a8u3lgjs-pooler.eastus2.azure.neon.tech/neondb',
-    ssl: {
-      rejectUnauthorized: false, // Permitir conexiones SSL sin verificar el certificado
-    },
-  });
-
-  try {
-    await client.connect();
-
-    const res = await client.query('SELECT name, value FROM env');
-    res.rows.forEach(row => {
-      process.env[row.name] = row.value; // Cargar cada variable en process.env
+  await retry(async (bail) => {
+    const client = new Client({
+      connectionString: 'postgresql://neondb_owner:npg_qs9gLMJPw4SI@ep-royal-snow-a8u3lgjs-pooler.eastus2.azure.neon.tech/neondb',
+      ssl: {
+        rejectUnauthorized: false, // Permitir conexiones SSL sin verificar el certificado
+      },
     });
 
-    console.log('Environment variables loaded from database.');
-    console.log('Rows from database:', res.rows);
-  } catch (err) {
-    console.error('Error loading environment variables from database:', err);
-    throw err; // Lanzar el error si no se pueden cargar las variables
-  } finally {
-    await client.end();
-  }
+    try {
+      await client.connect();
+
+      const res = await client.query('SELECT name, value FROM env');
+      res.rows.forEach(row => {
+        process.env[row.name] = row.value; // Cargar cada variable en process.env
+      });
+
+      console.log('Environment variables loaded from database.');
+      console.log('Rows from database:', res.rows);
+    } catch (err) {
+      console.error('Error loading environment variables from database:', err);
+
+      // Si el error es crítico, no reintentar
+      if (err.code === 'ECONNREFUSED') {
+        bail(err); // Detener los reintentos
+      }
+
+      throw err; // Reintentar en caso de otros errores
+    } finally {
+      await client.end();
+    }
+  }, {
+    retries: 5, // Número máximo de reintentos
+    factor: 2, // Incremento exponencial del tiempo entre reintentos
+    minTimeout: 1000, // Tiempo mínimo entre reintentos (1 segundo)
+    maxTimeout: 5000, // Tiempo máximo entre reintentos (5 segundos)
+    onRetry: (err, attempt) => {
+      console.log(`Retrying to load environment variables... Attempt #${attempt}`);
+    },
+  });
 }
 
 (async () => {
