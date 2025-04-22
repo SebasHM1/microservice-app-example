@@ -20,7 +20,8 @@ RUN apt-get update && apt-get install -y --fix-missing \
 RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
 # Variables de entorno por defecto (puedes sobreescribirlas al ejecutar)
-ENV REDIS_HOST=127.0.0.1
+ENV REDIS_HOST=true-ladybird-25795.upstash.io
+ENV REDIS_PASSWORD=AWTDAAIjcDFkYTNjZmFhMThmNTc0NWIzOTJhZWJkNzIwZDhhNzlhZHAxMA
 ENV REDIS_PORT=6379
 ENV REDIS_CHANNEL=log_channel
 
