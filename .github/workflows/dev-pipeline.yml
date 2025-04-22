@@ -54,14 +54,7 @@ jobs:
         run: |
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/frontend:${IMAGE_TAG} ./frontend
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/frontend:${IMAGE_TAG}
-
-      # Paso adicional para triggerear Railway
-      - name: Trigger Railway Deploy
-        run: |
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.RAILWAY_API_TOKEN }}" \
-            "https://api.railway.app/v1/projects/${{ secrets.RAILWAY_PROJECT_ID }}/deploy"
+          
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -72,5 +65,5 @@ jobs:
       - name: Deploy ${{ matrix.service }}
         uses: bervProject/railway-deploy@main
         with:
-          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          railway_token: ${{ secrets.RAILWAY_API_TOKEN }}
           service: ${{ matrix.service }}
