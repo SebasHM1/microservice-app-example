@@ -59,7 +59,7 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
 
     steps:
       - uses: actions/checkout@v3
