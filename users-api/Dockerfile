@@ -18,4 +18,4 @@ RUN /app/mvnw clean package
 
 EXPOSE 8083
 
-CMD ["java", "-jar", "target/users-api-0.0.1-SNAPSHOT.jar"]
+CMD ["java", "-jar", "/app/target/users-api-0.0.1-SNAPSHOT.jar"]
