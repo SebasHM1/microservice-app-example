@@ -58,19 +58,21 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}  # define tu token como secreto en Settings → Secrets :contentReference[oaicite:5]{index=5} 
+    strategy:
+      matrix:
+        service: [auth-api, users-api, todos-api, log-message-processor, frontend]
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Install Railway CLI
-        run: npm install -g @railway/cli      # Node ≥16 
+        run: npm install -g @railway/cli  # Node ≥ 16 necesario :contentReference[oaicite:6]{index=6}
 
-      - name: Railway login
-        run: railway login --token ${{ secrets.RAILWAY_API_TOKEN }}  # CI-friendly 
-
-      - name: Redeploy all services
+      - name: Redeploy ${{ matrix.service }} on Railway
+        working-directory: ${{ matrix.service }}
         run: |
-          for S in auth-api users-api todos-api log-message-processor frontend; do
-            railway service --yes --service $S      # linkea si hace falta 
-            railway redeploy --yes                  # redeploy sin confirmación 
-          done
+          railway service --yes                 # linkea si no está vinculado
+          railway redeploy --yes --ci           # redeploy no interactivo desde Docker Hub
