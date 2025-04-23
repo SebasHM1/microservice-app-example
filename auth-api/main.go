@@ -29,8 +29,6 @@ func main() {
 		port = os.Getenv("AUTH_API_PORT")   // fallback local o CI
 	}
 	hostport := "0.0.0.0:" + port           // escucha en todas las interfaces
-	e.Logger.Infof("Starting on %s", hostport)
-	e.Logger.Fatal(e.Start(hostport))
 
 	userAPIAddress := os.Getenv("USERS_API_ADDRESS")
 
