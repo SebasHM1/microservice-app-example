@@ -4,11 +4,7 @@ services:
     build:
       context: ./auth-api
     ports:
-      - 8000:8000
-    environment:
-      - AUTH_API_PORT=8000
-      - USERS_API_ADDRESS=http://users-api:8083
-      - JWT_SECRET=myfancysecret
+      - "8000:8000"
     networks:
       - app-network
 
@@ -19,21 +15,12 @@ services:
       - 8083:8083
     networks:
       - app-network
-    environment:
-      - JWT_SECRET=myfancysecret
-      - SERVER_PORT=8083
 
   todos-api:
     build: ./todos-api
     container_name: todos-api
-    ports:
-      - 8082:8082
-    environment:
-      - REDIS_HOST=true-ladybird-25795.upstash.io
-      - REDIS_PASSWORD=AWTDAAIjcDFkYTNjZmFhMThmNTc0NWIzOTJhZWJkNzIwZDhhNzlhZHAxMA
-      - REDIS_PORT=6379
-      - REDIS_CHANNEL=log_channel
-      - JWT_SECRET=myfancysecret
+    ports: 
+      - "8082:8082"
     networks:
       - app-network  
     
@@ -41,11 +28,6 @@ services:
   log-message-processor:
     build: ./log-message-processor
     container_name: log-processor
-    environment:
-      - REDIS_HOST=true-ladybird-25795.upstash.io
-      - REDIS_PORT=6379
-      - REDIS_CHANNEL=log_channel
-      - REDIS_PASSWORD=AWTDAAIjcDFkYTNjZmFhMThmNTc0NWIzOTJhZWJkNzIwZDhhNzlhZHAxMA
     networks:
       - app-network  
 
@@ -58,11 +40,6 @@ services:
       - auth-api
       - users-api
       - todos-api
-    environment:
-
-      - AUTH_API_ADDRESS=http://auth-api:8000
-      - TODOS_API_ADDRESS=http://todos-api:8082
-
     networks:
       - app-network 
 

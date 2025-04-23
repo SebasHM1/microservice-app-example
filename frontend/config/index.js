@@ -1,5 +1,9 @@
-// see http://vuejs-templates.github.io/webpack for documentation.
-var path = require('path')
+const path = require('path');
+const loadEnvVariablesFromDB = require('./load-env');
+
+console.log('AUTH_API_ADDRESS:', process.env.AUTH_API_ADDRESS);
+console.log('TODOS_API_ADDRESS:', process.env.TODOS_API_ADDRESS);
+console.log('ZIPKIN_URL:', process.env.ZIPKIN_URL);
 
 module.exports = {
   build: {
@@ -9,19 +13,12 @@ module.exports = {
     assetsSubDirectory: 'static',
     assetsPublicPath: '/',
     productionSourceMap: true,
-    // Gzip off by default as many popular static hosts such as
-    // Surge or Netlify already gzip all static assets for you.
-    // Before setting to `true`, make sure to:
-    // npm install --save-dev compression-webpack-plugin
     productionGzip: false,
     productionGzipExtensions: ['js', 'css'],
-    // Run the build command with an extra argument to
-    // View the bundle analyzer report after build finishes:
-    // `npm run build --report`
-    // Set to `true` or `false` to always turn it on or off
     bundleAnalyzerReport: process.env.npm_config_report
   },
   dev: {
+    loadEnvVariablesFromDB,
     env: require('./dev.env'),
     port: process.env.PORT,
     autoOpenBrowser: false,
@@ -29,26 +26,21 @@ module.exports = {
     assetsPublicPath: '/',
     proxyTable: {
       '/login': {
-        target: process.env.AUTH_API_ADDRESS || 'http://127.0.0.1:8081',
-        secure: false
+        target: process.env.AUTH_API_ADDRESS || 'http://default-auth-api-address',
+        secure: false,
       },
       '/todos': {
-        target: process.env.TODOS_API_ADDRESS || 'http://127.0.0.1:8082',
-        secure: false
+        target: process.env.TODOS_API_ADDRESS || 'http://default-todos-api-address',
+        secure: false,
       },
       '/zipkin': {
-        target: process.env.ZIPKIN_URL || 'http://127.0.0.1:9411/api/v2/spans',
+        target: process.env.ZIPKIN_URL || 'http://default-zipkin-url',
         pathRewrite: {
-          '^/zipkin': ''
+          '^/zipkin': '',
         },
-        secure: false
-      },      
+        secure: false,
+      },
     },
-    // CSS Sourcemaps off by default because relative paths are "buggy"
-    // with this option, according to the CSS-Loader README
-    // (https://github.com/webpack/css-loader#sourcemaps)
-    // In our experience, they generally work as expected,
-    // just be aware of this issue when enabling this option.
     cssSourceMap: false
   }
-}
+};
