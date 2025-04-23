@@ -19,6 +19,9 @@ services:
       - 8083:8083
     networks:
       - app-network
+    environment:
+      - JWT_SECRET=myfancysecret
+      - SERVER_PORT=8083
 
   todos-api:
     build: ./todos-api
@@ -55,6 +58,11 @@ services:
       - auth-api
       - users-api
       - todos-api
+    environment:
+
+      - AUTH_API_ADDRESS=http://auth-api:8000
+      - TODOS_API_ADDRESS=http://todos-api:8082
+
     networks:
       - app-network 
 
