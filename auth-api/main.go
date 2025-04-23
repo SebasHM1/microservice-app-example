@@ -59,12 +59,9 @@ func loadConfigFromDB(db *sql.DB) error {
     AppConfig = Config{
         ZIPKIN_URL:        configMap["ZIPKIN_URL"],
         JWT_SECRET:        configMap["JWT_SECRET"],
-        USERS_API_ADDRESS: configMap["USERS_API_ADDRESS"],
         AUTH_API_PORT:     configMap["AUTH_API_PORT"],
-        AUTH_API_ADDRESS:  configMap["AUTH_API_ADDRESS"],
-        TODOS_API_ADDRESS: configMap["TODOS_API_ADDRESS"],
-        REDIST_PORT:       configMap["REDIST_PORT"],
-        REDIST_HOST:       configMap["REDIST_HOST"],
+        REDIS_PORT:       configMap["REDIS_PORT"],
+        REDIS_HOST:       configMap["REDIS_HOST"],
         REDIS_CHANNEL:     configMap["REDIS_CHANNEL"],
     }
 
@@ -72,6 +69,7 @@ func loadConfigFromDB(db *sql.DB) error {
 }
 
 func main() {
+
 	connStr := "postgresql://neondb_owner:npg_qs9gLMJPw4SI@ep-royal-snow-a8u3lgjs-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
 	db, err := sql.Open("postgres", connStr)
 
@@ -86,10 +84,12 @@ func main() {
 
 	log.Println("Successfully connected to the database")
 	
-	
-
-	hostport := ":" + AppConfig.AUTH_API_PORT
-	userAPIAddress := AppConfig.USERS_API_ADDRESS
+	port := os.Getenv("PORT")               // Railway la inyecta
+	if port == "" {
+		port = AppConfig.AUTH_API_PORT  // fallback local o CI
+	}
+	hostport := "0.0.0.0:" + port           // escucha en todas las interfaces
+  userAPIAddress := os.Getenv("USERS_API_ADDRESS")
 
 	envJwtSecret := AppConfig.JWT_SECRET
 	if len(envJwtSecret) != 0 {

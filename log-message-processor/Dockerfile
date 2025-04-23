@@ -19,10 +19,11 @@ RUN apt-get update && apt-get install -y --fix-missing \
 # Instalamos dependencias de Python
 RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-# Variables de entorno por defecto (puedes sobreescribirlas al ejecutar)
-ENV REDIS_HOST=127.0.0.1
-ENV REDIS_PORT=6379
-ENV REDIS_CHANNEL=log_channel
+# Definimos variables de entorno (sin valores hardcodeados!)
+ENV REDIS_HOST=${REDIS_HOST}
+ENV REDIS_PASSWORD=${REDIS_PASSWORD}
+ENV REDIS_PORT=${REDIS_PORT}
+ENV REDIS_CHANNEL=${REDIS_CHANNEL}
 
 # Comando por defecto al iniciar
 CMD ["python", "main.py"]

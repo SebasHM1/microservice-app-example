@@ -47,7 +47,13 @@ if __name__ == '__main__':
             headers={'Content-Type': 'application/x-thrift'},
         )
 
-    pubsub = redis.Redis(host=redis_host, port=redis_port, db=0).pubsub()
+    pubsub = redis.Redis(
+        host=redis_host,
+        port=redis_port,
+        password=os.environ.get('REDIS_PASSWORD'),
+        ssl=True,  
+        db=0
+    ).pubsub()
     pubsub.subscribe([redis_channel])
     for item in pubsub.listen():
         try:

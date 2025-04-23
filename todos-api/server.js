@@ -4,10 +4,6 @@ const bodyParser = require("body-parser");
 const jwt = require('express-jwt');
 const { Client } = require('pg');
 const redis = require("redis");
-const {Tracer, BatchRecorder, jsonEncoder: { JSON_V2 }} = require('zipkin');
-const CLSContext = require('zipkin-context-cls');
-const {HttpLogger} = require('zipkin-transport-http');
-const zipkinMiddleware = require('zipkin-instrumentation-express').expressMiddleware;
 
 // Función para cargar las variables de entorno desde la base de datos
 async function loadEnvVariablesFromDB() {
@@ -41,32 +37,28 @@ async function loadEnvVariablesFromDB() {
     // Cargar las variables de entorno desde la base de datos antes de inicializar la aplicación
     await loadEnvVariablesFromDB();
 
-    const ZIPKIN_URL = process.env.ZIPKIN_URL;
     const REDIS_CHANNEL = process.env.REDIS_CHANNEL;
     const REDIS_HOST = process.env.REDIS_HOST;
     const REDIS_PORT = process.env.REDIS_PORT;
     const TODO_API_PORT = process.env.TODOS_API_PORT;
     const JWT_SECRET = process.env.JWT_SECRET;
+    const REDIS_PASSWORD = process.env.REDIS_PASSWORD;
 
     // Configuración de Redis
     const redisClient = redis.createClient({
-      host: REDIS_HOST,
-      port: REDIS_PORT,
-      retry_strategy: function (options) {
-        if (options.error && options.error.code === 'ECONNREFUSED') {
-          return new Error('The server refused the connection');
-        }
-        if (options.total_retry_time > 1000 * 60 * 60) {
-          return new Error('Retry time exhausted');
-        }
-        if (options.attempt > 10) {
-          console.log('reattempting to connect to redis, attempt #' + options.attempt);
-          return undefined;
-        }
-        return Math.min(options.attempt * 100, 2000);
-      }
+      socket: {
+        host: REDIS_HOST,
+        port: REDIS_PORT,
+        tls: true
+      },
+      password: REDIS_PASSWORD
     });
 
+redisClient.connect()
+  .then(() => console.log("Redis conectado"))
+  .catch((err) => console.error("Error conectando a Redis", err));
+
+    const logChannel = REDIS_CHANNEL;
     const app = express();
 
     // Configuración de Zipkin (tracing)
@@ -77,12 +69,9 @@ async function loadEnvVariablesFromDB() {
         jsonEncoder: JSON_V2
       })
     });
-    const localServiceName = 'todos-api';
-    const tracer = new Tracer({ ctxImpl, recorder, localServiceName });
 
     // Middleware
     app.use(jwt({ secret: JWT_SECRET }));
-    app.use(zipkinMiddleware({ tracer }));
     app.use(function (err, req, res, next) {
       if (err.name === 'UnauthorizedError') {
         res.status(401).send({ message: 'invalid token' });
@@ -93,7 +82,7 @@ async function loadEnvVariablesFromDB() {
 
     // Rutas
     const routes = require('./routes');
-    routes(app, { tracer, redisClient, logChannel: REDIS_CHANNEL });
+    routes(app, { redisClient, logChannel });
 
     // Iniciar el servidor
     app.listen(TODO_API_PORT, function () {
