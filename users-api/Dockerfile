@@ -14,7 +14,7 @@ RUN chmod +x /app/mvnw
 
 COPY src /app/src
 
-RUN /app/mvnw clean package -DskipTests
+RUN /app/mvnw clean package
 
 EXPOSE 8083
 
