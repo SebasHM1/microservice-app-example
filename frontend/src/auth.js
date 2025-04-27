@@ -10,7 +10,7 @@ import decode from 'jwt-decode'
 // ✔ Usa la variable de entorno expuesta por Vue CLI
 // src/auth.js
 const baseAuthUrl = process.env.VUE_APP_AUTH_API_ADDRESS;
-const LOGIN_URL    = `${baseAuthUrl}/login`;
+const LOGIN_URL = `${baseAuthUrl}/login`;
 const ROLE_ADMIN = 'ADMIN'
 
 /**
