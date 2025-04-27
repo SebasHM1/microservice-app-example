@@ -8,7 +8,9 @@ import decode from 'jwt-decode'
  *    and maybe nginx in production (cleaner calls and avoids CORS issues).
  */
 // ✔ Usa la variable de entorno expuesta por Vue CLI
-const LOGIN_URL = process.env.VUE_APP_AUTH_API_ADDRESS + '/login'
+// src/auth.js
+const baseAuthUrl = process.env.VUE_APP_AUTH_API_ADDRESS;
+const LOGIN_URL    = `${baseAuthUrl}/login`;
 const ROLE_ADMIN = 'ADMIN'
 
 /**
