@@ -1,7 +1,7 @@
 'use strict';
-const express = require('express')
-const bodyParser = require("body-parser")
-const jwt = require('express-jwt')
+const express = require('express');
+const bodyParser = require("body-parser");
+const jwt = require('express-jwt');
 
 const logChannel = process.env.REDIS_CHANNEL || 'log_channel';
 const redis = require("redis");
@@ -9,35 +9,81 @@ const redis = require("redis");
 const redisClient = redis.createClient({
   socket: {
     host: process.env.REDIS_HOST,
-    port: process.env.REDIS_PORT,
-    tls: true
+    // Asegúrate que REDIS_PORT tenga el valor del puerto TLS de Upstash
+    port: parseInt(process.env.REDIS_PORT || '6379', 10), // Añadido parseInt por si acaso
+    tls: true // Correcto para Upstash
+    // Puedes añadir opciones de reintento si lo deseas
+    // reconnectStrategy: retries => Math.min(retries * 50, 500)
   },
   password: process.env.REDIS_PASSWORD
 });
 
-redisClient.connect()
-  .then(() => console.log("Redis conectado"))
-  .catch((err) => console.error("Error conectando a Redis", err));
+// ---> Listener para eventos de conexión <---
+redisClient.on('connect', () => {
+    console.log('Redis: Cliente conectando...');
+});
 
-const port = process.env.TODO_API_PORT || 8082
-const jwtSecret = process.env.JWT_SECRET || "foo"
+redisClient.on('ready', () => {
+    console.log('Redis: Cliente listo y conectado.'); // Este es un mejor indicador
+});
 
-const app = express()
+// ---> ¡Listener de ERRORES ESENCIAL! <---
+redisClient.on('error', (err) => {
+    // Esto evitará que la app crashee por errores de Redis no manejados
+    console.error('Redis Client Error:', err);
+    // Aquí podrías añadir lógica de reintento o notificación si es necesario
+});
 
-// tracing
+redisClient.on('end', () => {
+    console.log('Redis: Conexión cerrada.');
+});
 
-app.use(jwt({ secret: jwtSecret }))
+// Conectar e inicializar
+async function initializeRedis() {
+    try {
+        await redisClient.connect();
+        // Ahora el listener 'ready' confirmará la conexión
+    } catch (err) {
+        console.error("Redis: Fallo al conectar inicialmente:", err);
+        // Considera salir si la conexión inicial es crítica
+        process.exit(1);
+    }
+}
+
+initializeRedis(); // Llama a la función de conexión
+
+const port = process.env.TODO_API_PORT || 8082;
+const jwtSecret = process.env.JWT_SECRET || "foo";
+
+const app = express();
+
+app.use(jwt({ secret: jwtSecret, algorithms: ['HS256'] })); // Especificar algoritmo es buena práctica
 app.use(function (err, req, res, next) {
   if (err.name === 'UnauthorizedError') {
-    res.status(401).send({ message: 'invalid token' })
+    return res.status(401).send({ message: 'invalid token' }); // Añadido return
   }
-})
-app.use(bodyParser.urlencoded({ extended: false }))
-app.use(bodyParser.json())
+  next(err); // Pasar otros errores
+});
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
-const routes = require('./routes')
-routes(app, {redisClient, logChannel})
+// Asegúrate de pasar el cliente inicializado
+const routes = require('./routes');
+routes(app, { redisClient, logChannel }); // Pasas el cliente aquí
 
 app.listen(port, function () {
-  console.log('todo list RESTful API server started on: ' + port)
-})
+  console.log('todo list RESTful API server started on: ' + port);
+});
+
+// Manejo elegante de cierre (opcional pero bueno)
+process.on('SIGTERM', async () => {
+    console.log('SIGTERM received. Closing Redis connection.');
+    await redisClient.quit();
+    process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+    console.log('SIGINT received. Closing Redis connection.');
+    await redisClient.quit();
+    process.exit(0);
+});
