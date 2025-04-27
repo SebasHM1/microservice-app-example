@@ -1,0 +1,26 @@
+# nginx/templates/default.conf.template
+
+server {
+    # Railway inyecta aquí la variable $PORT
+    listen       ${PORT};
+    listen       [::]:${PORT} default ipv6only=on;
+
+    # Nombre de servidor genérico
+    server_name  _;
+
+    # Carpeta donde Vue CLI deja tu build
+    root         /usr/share/nginx/html;
+    index        index.html index.htm;
+
+    # SPA fallback: todas las rutas van a index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Ejemplo de proxy (si lo necesitas):
+    # location /api/ {
+    #   proxy_pass https://auth-api-production-10a5.up.railway.app;
+    #   proxy_set_header Host $host;
+    #   proxy_set_header X-Real-IP $remote_addr;
+    # }
+}

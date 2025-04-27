@@ -16,6 +16,12 @@ RUN npm run build               # Aquí se bakean las vars VUE_APP_* en el bundl
 
 # ─── Etapa de producción ────────────────────────────
 FROM nginx:stable-alpine
+
+# Copia tu build de Vue
 COPY --from=build /app/dist /usr/share/nginx/html
+
+# Copia SOLO la plantilla, en la ruta que Railway espera
+COPY nginx/templates/default.conf.template /etc/nginx/templates/default.conf.template
+
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
