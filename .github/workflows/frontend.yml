@@ -35,8 +35,8 @@ jobs:
       - name: Build & push ${{ env.SERVICE_NAME }}
         run: |
           docker build \
-            --build-arg VUE_APP_AUTH_API_ADDRESS=${{ env.VUE_APP_AUTH_API_ADDRESS }} \
-            --build-arg VUE_APP_TODOS_API_ADDRESS=${{ env.VUE_APP_TODOS_API_ADDRESS }} \
+            --build-arg VUE_APP_AUTH_API_ADDRESS=ignored \
+            --build-arg VUE_APP_TODOS_API_ADDRESS=ignored \
             -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.SERVICE_NAME }}:${IMAGE_TAG} \
             ./${{ env.SERVICE_NAME }}
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.SERVICE_NAME }}:${IMAGE_TAG}
