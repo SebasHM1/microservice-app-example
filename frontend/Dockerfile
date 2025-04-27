@@ -1,21 +1,21 @@
-FROM node:8.17.0
-
+# ─── Etapa de build ─────────────────────────────────
+FROM node:8.17.0 AS build
 WORKDIR /app
 
-COPY .env.development .env.production ./
+# 1) Copia definiciones de entorno antes de instalar/build
+ARG VUE_APP_AUTH_API_ADDRESS
+ARG VUE_APP_TODOS_API_ADDRESS
+ENV VUE_APP_AUTH_API_ADDRESS=$VUE_APP_AUTH_API_ADDRESS
+ENV VUE_APP_TODOS_API_ADDRESS=$VUE_APP_TODOS_API_ADDRESS
 
+# 2) Instalación y build
 COPY package*.json ./
-
 RUN npm install
-
 COPY . .
+RUN npm run build               # Aquí se bakean las vars VUE_APP_* en el bundle
 
-RUN npm run build
-
-EXPOSE 8080
-
-ENV PORT=8080
-ENV AUTH_API_ADDRESS=${AUTH_API_ADDRESS}
-ENV TODOS_API_ADDRESS=${TODOS_API_ADDRESS}
-
-CMD ["npm", "start"]
+# ─── Etapa de producción ────────────────────────────
+FROM nginx:stable-alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

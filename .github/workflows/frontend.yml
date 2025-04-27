@@ -15,6 +15,9 @@ jobs:
       IMAGE_TAG: latest
       SERVICE_NAME: frontend
       RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+      # Opcional: si prefieres no hardcodear las URLs, ponlas en tus Secrets
+      VUE_APP_AUTH_API_ADDRESS: https://auth-api-production-10a5.up.railway.app
+      VUE_APP_TODOS_API_ADDRESS: https://todos-api-production-30d6.up.railway.app
 
     steps:
       - name: Checkout code
@@ -31,7 +34,11 @@ jobs:
 
       - name: Build & push ${{ env.SERVICE_NAME }}
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.SERVICE_NAME }}:${IMAGE_TAG} ./${{ env.SERVICE_NAME }}
+          docker build \
+            --build-arg VUE_APP_AUTH_API_ADDRESS=${{ env.VUE_APP_AUTH_API_ADDRESS }} \
+            --build-arg VUE_APP_TODOS_API_ADDRESS=${{ env.VUE_APP_TODOS_API_ADDRESS }} \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.SERVICE_NAME }}:${IMAGE_TAG} \
+            ./${{ env.SERVICE_NAME }}
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.SERVICE_NAME }}:${IMAGE_TAG}
 
       - name: Install Railway CLI
