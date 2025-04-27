@@ -14,16 +14,13 @@ RUN npm install
 COPY . .
 RUN npm run build               # Aquí se bakean las vars VUE_APP_* en el bundle
 
-# Etapa final: servir con "serve"
-FROM node:8.17.0
-WORKDIR /app
-COPY --from=build /app/dist ./dist
+# Etapa de producción con Nginx
+FROM nginx:stable-alpine AS production
+# Copiamos los artefactos
+COPY --from=build /app/dist /usr/share/nginx/html
 
-# Instala el servidor estático
-RUN npm install -g serve
+# (Opcional) Personaliza el puerto si Railway requiere otro en default.conf.template
+# COPY nginx/default.conf.template /etc/nginx/conf.d/default.conf.template
 
-# EXPONE el puerto (opcional, Railway infiere de $PORT)
-EXPOSE 8080
-
-# Usa $PORT como escucha
-CMD ["sh", "-c", "serve -s dist -l $PORT"]
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
