@@ -2,6 +2,8 @@ FROM node:8.17.0
 
 WORKDIR /app
 
+COPY .env.development .env.production ./
+
 COPY package*.json ./
 
 RUN npm install
