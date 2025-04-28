@@ -22,8 +22,8 @@ type Config struct {
 	JWT_SECRET        string
 	USERS_API_ADDRESS string
 	AUTH_API_PORT     string
-	AUTH_API_ADDRES   string
-	TODOS_API_ADDRES  string
+	AUTH_API_ADDRESS  string
+	TODOS_API_ADDRESS string
 	REDIS_PORT        string
 	REDIS_HOST        string
 	REDIS_CHANNEL     string
