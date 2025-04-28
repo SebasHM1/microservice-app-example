@@ -57,6 +57,8 @@ import AppNav from '@/components/AppNav'
 import TodoItem from '@/components/TodoItem'
 import Spinner from '@/components/common/Spinner'
 
+const TODOS_API_BASE_URL = 'https://todos-api-production-30d6.up.railway.app';
+
 export default {
   name: 'todos',
   components: {AppNav, TodoItem, Spinner},
@@ -86,16 +88,16 @@ export default {
     loadTasks () {
       this.isProcessing = true
       this.errorMessage = ''
-      this.$http.get('/todos').then(response => {
+      this.$http.get('${TODOS_API_BASE_URL}/todos'.then(response => {
+        this.tasks.splice(0, this.tasks.length);
         for (var i in response.body) {
           this.tasks.push(response.body[i])
         }
         this.isProcessing = false
       }, error => {
         this.isProcessing = false
-        this.errorMessage = JSON.stringify(error.body) + '. Response code: ' + error.status
-      })
-    },
+        this.errorMessage = `Error loading tasks: ${error.status} - ${JSON.stringify(error.body)}`; // Mensaje de error más claro      })
+      },
 
     addTask () {
       if (this.newTask) {
@@ -106,29 +108,43 @@ export default {
           content: this.newTask
         }
 
-        this.$http.post('/todos', task).then(response => {
+        this.$http.post(`${TODOS_API_BASE_URL}/todos`, task).then(response => {
           this.newTask = ''
           this.isProcessing = false
-          this.tasks.push(task)
+          if (response.body && response.body.id) {
+             this.tasks.push(response.body);
+          } else {
+             // Fallback si la API no devuelve el objeto completo (menos ideal)
+             // Necesitarías volver a cargar todo o manejarlo de otra forma.
+             console.warn("API did not return created task with ID. Pushing local task object.");
+             // this.tasks.push(task); // Esto no tendrá el ID correcto de la base de datos
+             this.loadTasks(); // O simplemente recarga todo
+          }
         }, error => {
           this.isProcessing = false
-          this.errorMessage = JSON.stringify(error.body) + '. Response code: ' + error.status
-        })
+          this.errorMessage = `Error adding task: ${error.status} - ${JSON.stringify(error.body)}`;        })
       }
     },
 
     removeTask (index) {
       const item = this.tasks[index]
+      // Asegúrate de que 'item' y 'item.id' existan antes de proceder
+      if (!item || typeof item.id === 'undefined') {
+         console.error("Cannot remove task: item or item.id is undefined", item);
+         this.errorMessage = "Cannot remove task: Invalid item data.";
+         return;
+      }
 
       this.isProcessing = true
       this.errorMessage = ''
 
-      this.$http.delete('/todos/' + item.id).then(response => {
+      // --- MODIFICADO: Usa la URL absoluta ---
+      this.$http.delete(`${TODOS_API_BASE_URL}/todos/${item.id}`).then(response => {
         this.isProcessing = false
         this.tasks.splice(index, 1)
       }, error => {
         this.isProcessing = false
-        this.errorMessage = JSON.stringify(error.body) + '. Response code: ' + error.status
+        this.errorMessage = `Error deleting task: ${error.status} - ${JSON.stringify(error.body)}`;
       })
     }
   }
