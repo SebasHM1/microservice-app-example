@@ -88,16 +88,19 @@ export default {
     loadTasks () {
       this.isProcessing = true
       this.errorMessage = ''
-      this.$http.get('https://todos-api-production-30d6.up.railway.app/todos'.then(response => {
-        this.tasks.splice(0, this.tasks.length);
-        for (var i in response.body) {
-          this.tasks.push(response.body[i])
-        }
-        this.isProcessing = false
-      }, error => {
-        this.isProcessing = false
-        this.errorMessage = `Error loading tasks: ${error.status} - ${JSON.stringify(error.body)}`; // Mensaje de error más claro      })
-      },
+      // --- CORREGIDO: Paréntesis y .then en el lugar correcto ---
+      this.$http.get('https://todos-api-production-30d6.up.railway.app/todos')
+        .then(response => {
+          this.tasks.splice(0, this.tasks.length); // Vaciar antes de llenar
+          for (var i in response.body) {
+            this.tasks.push(response.body[i])
+          }
+          this.isProcessing = false
+        }, error => { // <- Asegúrate que el callback de error esté aquí
+          this.isProcessing = false
+          this.errorMessage = `Error loading tasks: ${error.status} - ${JSON.stringify(error.body)}`;
+        }) // <- Cierre del .then()
+    }, // <- Coma separadora
 
     addTask () {
       if (this.newTask) {
@@ -108,45 +111,47 @@ export default {
           content: this.newTask
         }
 
-        this.$http.post(`$https://todos-api-production-30d6.up.railway.app/todos`, task).then(response => {
-          this.newTask = ''
-          this.isProcessing = false
-          if (response.body && response.body.id) {
-             this.tasks.push(response.body);
-          } else {
-             // Fallback si la API no devuelve el objeto completo (menos ideal)
-             // Necesitarías volver a cargar todo o manejarlo de otra forma.
-             console.warn("API did not return created task with ID. Pushing local task object.");
-             // this.tasks.push(task); // Esto no tendrá el ID correcto de la base de datos
-             this.loadTasks(); // O simplemente recarga todo
-          }
-        }, error => {
-          this.isProcessing = false
-          this.errorMessage = `Error adding task: ${error.status} - ${JSON.stringify(error.body)}`;        })
+        // --- CORREGIDO: Quitado el '$' extra dentro de las backticks ---
+        // (También podrías usar comillas simples aquí)
+        this.$http.post(`https://todos-api-production-30d6.up.railway.app/todos`, task)
+          .then(response => {
+            this.newTask = ''
+            this.isProcessing = false
+            if (response.body && response.body.id) {
+              this.tasks.push(response.body);
+            } else {
+              console.warn("API did not return created task with ID. Reloading tasks.");
+              this.loadTasks(); // Recarga todo como fallback
+            }
+          }, error => { // <- Callback de error
+            this.isProcessing = false
+            this.errorMessage = `Error adding task: ${error.status} - ${JSON.stringify(error.body)}`;
+          }) // <- Cierre del .then()
       }
-    },
+    }, // <- Coma separadora
 
     removeTask (index) {
       const item = this.tasks[index]
-      // Asegúrate de que 'item' y 'item.id' existan antes de proceder
+      // Esta comprobación es importante, pero fallará si 'item' no tiene 'id' porque loadTasks falló
       if (!item || typeof item.id === 'undefined') {
-         console.error("Cannot remove task: item or item.id is undefined", item);
-         this.errorMessage = "Cannot remove task: Invalid item data.";
-         return;
+        console.error("Cannot remove task: item or item.id is undefined. Item:", item);
+        this.errorMessage = "Cannot remove task: Invalid item data. Try refreshing.";
+        return;
       }
 
       this.isProcessing = true
       this.errorMessage = ''
 
-      // --- MODIFICADO: Usa la URL absoluta ---
-      this.$http.delete(`https://todos-api-production-30d6.up.railway.app/todos/${item.id}`).then(response => {
-        this.isProcessing = false
-        this.tasks.splice(index, 1)
-      }, error => {
-        this.isProcessing = false
-        this.errorMessage = `Error deleting task: ${error.status} - ${JSON.stringify(error.body)}`;
-      })
+      // La sintaxis aquí estaba bien, pero ahora item.id debería tener un valor si loadTasks funciona
+      this.$http.delete(`https://todos-api-production-30d6.up.railway.app/todos/${item.id}`)
+        .then(response => {
+          this.isProcessing = false
+          this.tasks.splice(index, 1)
+        }, error => { // <- Callback de error
+          this.isProcessing = false
+          this.errorMessage = `Error deleting task: ${error.status} - ${JSON.stringify(error.body)}`;
+        }) // <- Cierre del .then()
     }
-  }
+  } // <- Cierre del bloque 'methods'
 }
 </script>
