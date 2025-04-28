@@ -2,6 +2,7 @@
 const express = require('express');
 const bodyParser = require("body-parser");
 const jwt = require('express-jwt');
+const cors = require('cors'); // <--- 1. Importar cors
 
 const logChannel = process.env.REDIS_CHANNEL || 'log_channel';
 const redis = require("redis");
@@ -56,6 +57,21 @@ const port = process.env.TODO_API_PORT || 8082;
 const jwtSecret = process.env.JWT_SECRET || "foo";
 
 const app = express();
+
+// --- 2. Configurar y usar CORS ---
+const corsOptions = {
+  // ¡IMPORTANTE! Especifica el origen exacto de tu frontend
+  origin: 'https://frontend-production-af38.up.railway.app',
+  // Métodos permitidos (incluye OPTIONS para preflight)
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+  // Cabeceras permitidas (¡IMPORTANTE incluir Authorization para JWT!)
+  allowedHeaders: 'Content-Type, Authorization',
+  // Opcional: Si necesitas enviar cookies o usar credenciales (puede que no sea necesario aquí)
+  // credentials: true
+};
+app.use(cors(corsOptions));
+// Alternativa rápida (menos segura, permite cualquier origen):
+// app.use(cors()); // <-- ¡Cuidado en producción si manejas datos sensibles!
 
 app.use(jwt({ secret: jwtSecret, algorithms: ['HS256'] })); // Especificar algoritmo es buena práctica
 app.use(function (err, req, res, next) {
