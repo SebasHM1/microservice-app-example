@@ -62,88 +62,121 @@ def log_message(message):
     print('message received after waiting for {}ms: {}'.format(time_delay, message))
 
 
-if __name__ == '__main__':
+import time
+import redis
+import os
+import json
+import sys
+import psycopg2
 
-    print("Starting log-message-processor...") # Log inicial
-    load_env_variables_from_db() # Carga la configuración primero
+# ... (función load_env_variables_from_db sigue igual) ...
+# ... (función log_message sigue igual) ...
 
-    # Accede a las variables DESPUÉS de que load_env_variables_from_db() las haya cargado
-    try:
-        redis_host = os.environ['REDIS_HOST']
-        redis_port = int(os.environ['REDIS_PORT'])
-        redis_channel = os.environ['REDIS_CHANNEL']
-        redis_password = os.environ.get('REDIS_PASSWORD') # Usa get por si no está definida
-        # zipkin_url = os.environ.get('ZIPKIN_URL', '') # Usa get con default si Zipkin es opcional
-    except KeyError as e:
-        print(f"Error: Missing required environment variable from database or Railway: {e}")
-        sys.exit(1)
 
-    print(f"Connecting to Redis: {redis_host}:{redis_port} on channel '{redis_channel}'") # Log
-
-    # Considera quitar toda la lógica de transporte de Zipkin si ya no se usa
-    # def http_transport(encoded_span):
-    #    # ...
-
-    # Conexión a Redis
+def create_redis_connection(redis_host, redis_port, redis_password):
+    """Crea y prueba una nueva conexión Redis."""
+    print(f"Attempting to connect to Redis: {redis_host}:{redis_port}...")
     try:
         r = redis.Redis(
             host=redis_host,
             port=redis_port,
             password=redis_password,
-            ssl=True, # Asegúrate que tu Redis (Upstash?) requiera SSL
-            ssl_cert_reqs=None, # Puede ser necesario para algunos proveedores de SSL
+            ssl=True,
+            ssl_cert_reqs=None, # Puede ser necesario
             db=0,
-            socket_connect_timeout=5, # Añade timeout
-            socket_timeout=5
+            socket_connect_timeout=10,
+            socket_timeout=None,  # <--- IMPORTANTE: Deshabilita timeout de lectura para listen()
+            # socket_keepalive=True # <-- NO DISPONIBLE en v2.10.6
         )
-        r.ping() # Prueba la conexión
+        r.ping()
         print("Redis connection successful (ping).")
-        pubsub = r.pubsub(ignore_subscribe_messages=True) # Ignora mensajes automáticos
-        pubsub.subscribe(redis_channel)
-        print(f"Subscribed to Redis channel '{redis_channel}'. Waiting for messages...")
+        return r
     except redis.exceptions.ConnectionError as e:
-        print(f"Fatal: Could not connect to Redis at {redis_host}:{redis_port}. Error: {e}")
-        sys.exit(1)
+        print(f"Error connecting to Redis: {e}")
+        return None
     except Exception as e:
-        print(f"Fatal: An unexpected error occurred during Redis setup: {e}")
+        print(f"Unexpected error during Redis connection: {e}")
+        return None
+
+
+if __name__ == '__main__':
+
+    print("Starting log-message-processor...")
+    load_env_variables_from_db()
+
+    try:
+        redis_host = os.environ['REDIS_HOST']
+        redis_port = int(os.environ['REDIS_PORT'])
+        redis_channel = os.environ['REDIS_CHANNEL']
+        redis_password = os.environ.get('REDIS_PASSWORD')
+    except KeyError as e:
+        print(f"Error: Missing required environment variable: {e}")
         sys.exit(1)
 
+    redis_conn = None
+    pubsub = None
+    backoff_time = 1 # Segundos iniciales para esperar antes de reconectar
 
-    # Bucle principal para escuchar mensajes
-    for item in pubsub.listen():
-        # El item ya no debería ser el mensaje de subscripción por ignore_subscribe_messages=True
-        # Pero añadimos una comprobación por si acaso
-        if item['type'] == 'message':
-            try:
-                # Decodifica el mensaje
-                message_data = item['data'].decode("utf-8")
-                # Intenta parsear como JSON, si falla, trátalo como texto plano
+    while True: # Bucle principal para mantener la conexión/subscripción
+        if redis_conn is None or pubsub is None:
+            redis_conn = create_redis_connection(redis_host, redis_port, redis_password)
+            if redis_conn:
                 try:
-                    message_content = json.loads(message_data)
-                except json.JSONDecodeError:
-                    message_content = message_data # No era JSON, usa el texto tal cual
+                    pubsub = redis_conn.pubsub(ignore_subscribe_messages=True)
+                    pubsub.subscribe(redis_channel)
+                    print(f"Subscribed to Redis channel '{redis_channel}'. Waiting for messages...")
+                    backoff_time = 1 # Resetea el backoff al conectar exitosamente
+                except Exception as e:
+                    print(f"Error setting up pubsub/subscribing: {e}")
+                    redis_conn = None # Falla la configuración, intentar reconectar
+                    pubsub = None
+            else:
+                 # Falló la conexión, esperar antes de reintentar
+                 print(f"Will retry Redis connection in {backoff_time} seconds...")
+                 time.sleep(backoff_time)
+                 backoff_time = min(backoff_time * 2, 60) # Incrementa espera hasta 60s
+                 continue # Vuelve al inicio del while para reintentar conectar
 
-                # --- Lógica de Zipkin (Considera eliminarla si no la usas) ---
-                # zipkin_enabled = bool(zipkin_url) and isinstance(message_content, dict) and 'zipkinSpan' in message_content
-                # if zipkin_enabled:
-                #     span_data = message_content['zipkinSpan']
-                #     try:
-                #         with zipkin_span( # ... configuración de zipkin ... ):
-                #              log_message(message_content)
-                #     except Exception as ze:
-                #         print(f'Zipkin error: {ze}')
-                #         log_message(message_content) # Loguea igualmente si Zipkin falla
-                # else:
-                #     # Log sin Zipkin
-                #     log_message(message_content)
-                # --- Fin Lógica Zipkin ---
+        # Si tenemos conexión y pubsub, intentamos escuchar
+        try:
+            print("Entering pubsub.listen() loop...")
+            for item in pubsub.listen():
+                 # El item debería ser solo de tipo 'message'
+                print(f"Received raw item: {item}") # Log
+                if item['type'] == 'message':
+                    try:
+                        message_data = item['data'].decode("utf-8")
+                        try:
+                            message_content = json.loads(message_data)
+                        except json.JSONDecodeError:
+                            message_content = message_data # Tratar como texto
 
-                # --- Log simple (si quitaste Zipkin) ---
-                log_message(message_content)
-                # --------------------------------------
+                        log_message(message_content) # Procesar el mensaje
 
-            except Exception as e:
-                # Error procesando el mensaje (decoding, json parsing, etc.)
-                print(f"Error processing received item: {e}. Raw item: {item}")
-                # Decide si continuar o no dependiendo del error
-                # continue
+                    except Exception as e:
+                         print(f"Error processing received message: {e}. Raw data: {item.get('data')}")
+
+            # Si listen() termina, puede indicar un problema. Forzamos reconexión.
+            print("pubsub.listen() exited. Forcing reconnect.")
+            if pubsub: pubsub.close() # Cierra pubsub viejo
+            if redis_conn: redis_conn.close() # Cierra conexión vieja
+            redis_conn, pubsub = None, None
+
+
+        except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError) as e:
+            # TimeoutError puede ocurrir si el socket se cierra externamente aunque tengamos socket_timeout=None
+            print(f"Redis Error during listen ({type(e).__name__}): {e}. Attempting reconnect...")
+            if pubsub: pubsub.close()
+            if redis_conn: redis_conn.close()
+            redis_conn, pubsub = None, None # Fuerza la reconexión en la siguiente iteración del while
+            # Espera un poco antes de intentar reconectar en el bucle principal
+            time.sleep(backoff_time)
+            backoff_time = min(backoff_time * 2, 60)
+
+        except Exception as e:
+            print(f"Unexpected error during pubsub.listen loop: {e}")
+            # Decide qué hacer, por ahora reconectar
+            if pubsub: pubsub.close()
+            if redis_conn: redis_conn.close()
+            redis_conn, pubsub = None, None
+            time.sleep(5) # Espera antes de reintentar
