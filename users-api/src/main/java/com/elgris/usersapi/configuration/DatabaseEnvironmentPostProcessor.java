@@ -50,9 +50,9 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                         properts.put("jwt.secret", value);
                         break;
                 
-                    case "USERS_API_PORT":
-                        properts.put("server.port", value);
-                        break;
+                    //case "USERS_API_PORT":
+                      //  properts.put("server.port", value);
+                        //break;
 
                     case "ZIPKIN_BASE_URL":
                         properts.put("spring.zipkin.baseUrl", value);
