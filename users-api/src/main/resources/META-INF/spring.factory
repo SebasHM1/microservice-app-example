@@ -1,0 +1,3 @@
+# filepath: src/main/resources/META-INF/spring.factories
+org.springframework.boot.env.EnvironmentPostProcessor=\
+com.elgris.usersapi.configuration.DatabaseEnvironmentPostProcessor
