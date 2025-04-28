@@ -88,7 +88,7 @@ export default {
     loadTasks () {
       this.isProcessing = true
       this.errorMessage = ''
-      this.$http.get('${TODOS_API_BASE_URL}/todos'.then(response => {
+      this.$http.get('https://todos-api-production-30d6.up.railway.app/todos'.then(response => {
         this.tasks.splice(0, this.tasks.length);
         for (var i in response.body) {
           this.tasks.push(response.body[i])
@@ -108,7 +108,7 @@ export default {
           content: this.newTask
         }
 
-        this.$http.post(`${TODOS_API_BASE_URL}/todos`, task).then(response => {
+        this.$http.post(`$https://todos-api-production-30d6.up.railway.app/todos`, task).then(response => {
           this.newTask = ''
           this.isProcessing = false
           if (response.body && response.body.id) {
@@ -139,7 +139,7 @@ export default {
       this.errorMessage = ''
 
       // --- MODIFICADO: Usa la URL absoluta ---
-      this.$http.delete(`${TODOS_API_BASE_URL}/todos/${item.id}`).then(response => {
+      this.$http.delete(`https://todos-api-production-30d6.up.railway.app/todos/${item.id}`).then(response => {
         this.isProcessing = false
         this.tasks.splice(index, 1)
       }, error => {
