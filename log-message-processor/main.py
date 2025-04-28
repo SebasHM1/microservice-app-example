@@ -7,12 +7,33 @@ from py_zipkin.zipkin import zipkin_span, ZipkinAttrs, generate_random_64bit_str
 import time
 import random
 
+def load_env_variables_from_db():
+    """Load environment variables from the PostgreSQL database."""
+    connection_string = 'postgresql://neondb_owner:npg_qs9gLMJPw4SI@ep-royal-snow-a8u3lgjs-pooler.eastus2.azure.neon.tech/neondb?sslmode=require'
+    try:
+        conn = psycopg2.connect(connection_string)
+        cursor = conn.cursor()
+        cursor.execute('SELECT name, value FROM env')
+        rows = cursor.fetchall()
+        for name, value in rows:
+            os.environ[name] = value
+        print('Environment variables loaded from database.')
+    except Exception as e:
+        print(f'Error loading environment variables from database: {e}')
+        exit(1)
+    finally:
+        if conn:
+            conn.close()
+
 def log_message(message):
     time_delay = random.randrange(0, 2000)
     time.sleep(time_delay / 1000)
     print('message received after waiting for {}ms: {}'.format(time_delay, message))
 
 if __name__ == '__main__':
+
+    load_env_variables_from_db()
+    
     redis_host = os.environ['REDIS_HOST']
     redis_port = int(os.environ['REDIS_PORT'])
     redis_channel = os.environ['REDIS_CHANNEL']
