@@ -119,7 +119,7 @@ func main() {
 	}
 	hostport := "0.0.0.0:" + port           // escucha en todas las interfaces
 
-	userAPIAddress = "https://users-api-production-7422.up.railway.app"
+	userAPIAddress := "https://users-api-production-7422.up.railway.app"
 
 	envJwtSecret := AppConfig.JWT_SECRET
 	if len(envJwtSecret) != 0 {
