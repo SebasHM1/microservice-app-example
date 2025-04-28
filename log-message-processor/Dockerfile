@@ -26,5 +26,4 @@ ENV REDIS_PORT=${REDIS_PORT}
 ENV REDIS_CHANNEL=${REDIS_CHANNEL}
 
 # Comando por defecto al iniciar
-# CMD ["python", "main.py"] # <-- Comenta el original
-CMD ["python", "-c", "import sys; print('Attempting import psycopg2...', file=sys.stderr); import psycopg2; print('Import psycopg2 OK', file=sys.stderr)"]
+CMD ["python", "main.py"]

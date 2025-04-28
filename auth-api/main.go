@@ -119,7 +119,7 @@ func main() {
 	}
 	hostport := "0.0.0.0:" + port           // escucha en todas las interfaces
 
-	userAPIAddress := ":" + AppConfig.AUTH_API_PORT
+	userAPIAddress = "https://users-api-production-7422.up.railway.app"
 
 	envJwtSecret := AppConfig.JWT_SECRET
 	if len(envJwtSecret) != 0 {
@@ -127,8 +127,9 @@ func main() {
 	}
 
 	userService := UserService{
+		// --- ¡ASEGURA QUE SIEMPRE SEA EL CLIENTE POR DEFECTO! ---
 		Client:         http.DefaultClient,
-		UserAPIAddress: userAPIAddress,
+		UserAPIAddress: userAPIAddress, // <-- USA LA VARIABLE DE CONFIG CARGADA
 		AllowedUserHashes: map[string]interface{}{
 			"admin_admin": nil,
 			"johnd_foo":   nil,
@@ -140,14 +141,16 @@ func main() {
 	e.Logger.SetLevel(gommonlog.INFO)
 
 	if zipkinURL := os.Getenv("ZIPKIN_URL"); len(zipkinURL) != 0 {
-		e.Logger.Infof("init tracing to Zipkit at %s", zipkinURL)
-
+		e.Logger.Infof("Zipkin URL detected (%s), but tracing init is disabled/removed.", zipkinURL)
+		// NO intentes inicializar ni reasignar userService.Client aquí
+		/*
 		if tracedMiddleware, tracedClient, err := initTracing(zipkinURL); err == nil {
 			e.Use(echo.WrapMiddleware(tracedMiddleware))
-			userService.Client = tracedClient
+			// userService.Client = tracedClient // <-- NO HACER ESTO
 		} else {
 			e.Logger.Infof("Zipkin tracer init failed: %s", err.Error())
 		}
+		*/
 	} else {
 		e.Logger.Infof("Zipkin URL was not provided, tracing is not initialised")
 	}
